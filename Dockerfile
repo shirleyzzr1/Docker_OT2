@@ -29,11 +29,9 @@ RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt
 RUN echo "source $ROS_ROOT/setup.bash" >> ~/.bashrc
 
 # creating, downloading resource directories ros packages and sourcing an overlay
-RUN mkdir -p $ROS_WS/src/demo \
-    && mkdir -p $ROS_WS/src/demo_interfaces \
-    && mkdir -p /root/config/temp
+RUN mkdir -p /root/config/temp
 WORKDIR /root
-COPY resources/test_config.yaml /root/test_config.yaml
+# COPY resources/test_config.yaml /root/test_config.yaml
 RUN git clone -b dev-kyle https://github.com/kjwelbeck3/ot2_driver.git \
     && pip3 install -r ot2_driver/requirements.txt \
     && useradd user \
@@ -42,7 +40,8 @@ RUN git clone -b dev-kyle https://github.com/kjwelbeck3/ot2_driver.git \
 WORKDIR $ROS_WS
 #COPY demo/ src/demo
 #COPY demo_interfaces/ src/demo_interfaces
-RUN git clone -b demo https://github.com/kjwelbeck3/OT2_actions.git 
+RUN git clone -b demo https://github.com/kjwelbeck3/OT2_actions.git \
+    && mv OT2_actions src
 
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
