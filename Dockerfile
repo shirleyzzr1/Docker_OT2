@@ -40,8 +40,10 @@ RUN git clone -b dev-kyle https://github.com/kjwelbeck3/ot2_driver.git \
     && chown user:user ot2_driver \
     && mkdir -p /root/
 WORKDIR $ROS_WS
-COPY demo/ src/demo
-COPY demo_interfaces/ src/demo_interfaces
+#COPY demo/ src/demo
+#COPY demo_interfaces/ src/demo_interfaces
+RUN git clone -b demo https://github.com/kjwelbeck3/OT2_actions.git 
+
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions \
