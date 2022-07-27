@@ -1,4 +1,4 @@
-# OT2_Docker
+# Docker_OT2
 
 - Builds the demo Docker container to be run on terminal connected to the OT2 robot.
 - Interfaces with another docker container(master) that provides the robot configuration and the protocol configuration
@@ -20,13 +20,15 @@
 ```cd Docker_OT2```
 
 3. Build the docker image (might be required to prepend docker commands with sudo)
+   
 ```docker build -t ot2```
 
 4. Launch a container instance of the newly-built image
-```docker run -it --net=host ot2 bash```
+   
+```docker run -it --net=host ot2 ```
 
-1. Run the action_server node
+5. Run the action_server node
 ```ros2 run demo action_client```
 
 
-NEXT: Launch the action_client node automatically on container startup
+NEXT: Launch the action_server node automatically on container startup
