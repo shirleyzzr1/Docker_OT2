@@ -34,7 +34,7 @@ RUN mkdir -p $ROS_WS/src/demo \
     && mkdir -p /root/config/temp
 WORKDIR /root
 COPY resources/test_config.yaml /root/test_config.yaml
-RUN git clone -b dev-kyle https://github.com/KPHippe/ot2_driver.git \
+RUN git clone -b dev-kyle https://github.com/kjwelbeck3/ot2_driver.git \
     && pip3 install -r ot2_driver/requirements.txt \
     && useradd user \
     && chown user:user ot2_driver \
