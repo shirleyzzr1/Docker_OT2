@@ -10,7 +10,7 @@ ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
 ENV ROS_PYTHON_VERSION=3
 ENV ROS_WS=/root/overlay_ws
 
-# install system packages
+# Installing system packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gnupg2 \
@@ -18,31 +18,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
-# install ros2 foxy-base
+# Installing ros2 foxy-base
 RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add - \
     && sh -c 'echo "deb [arch=$(dpkg --print-architecture)] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2-latest.list' \
     && apt-get update \
     && apt-get install -y ros-foxy-ros-base \
     && rm -rf /var/lib/apt/lists/*
 
-# sourcing underlay
+# Sourcing underlay in each terminal
 RUN echo "source $ROS_ROOT/setup.bash" >> ~/.bashrc
 
-# creating, downloading resource directories ros packages and sourcing an overlay
+# Creating, downloading resource directories, ros packages and sourcing as overlay
 RUN mkdir -p /root/config/temp
+
 WORKDIR /root
-# COPY resources/test_config.yaml /root/test_config.yaml
 RUN git clone -b dev-kyle https://github.com/kjwelbeck3/ot2_driver.git \
     && pip3 install -r ot2_driver/requirements.txt \
     && useradd user \
     && chown user:user ot2_driver \
     && mkdir -p /root/
+
 WORKDIR $ROS_WS
-#COPY demo/ src/demo
-#COPY demo_interfaces/ src/demo_interfaces
 RUN git clone -b demo https://github.com/kjwelbeck3/OT2_actions.git \
     && mv OT2_actions src
-
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions \
@@ -60,3 +58,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     && rm -rf /var/lib/apt/lists/*
 
 CMD ["bash"]
+
+# DOES NOT WORK. MIGHT NEED A SEPARATE BASH SCRIPT
+# CMD ["ros2", "run", "demo", "action_server"]

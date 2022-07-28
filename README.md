@@ -21,7 +21,7 @@
 
 3. Build the docker image (might be required to prepend docker commands with sudo)
    
-```docker build -t ot2```
+```docker build -t ot2 .```
 
 4. Launch a container instance of the newly-built image
    
