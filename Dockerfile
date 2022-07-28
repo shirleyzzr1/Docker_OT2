@@ -57,7 +57,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
+# Prepping entrypoint, running ros node
 COPY ros_entrypoint.sh /
 RUN chown user:user /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
-CMD ["bash"]
+
+CMD ["ros2", "run", "demo", "action_server"]

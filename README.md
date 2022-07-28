@@ -23,12 +23,6 @@
    
 ```docker build -t ot2 .```
 
-4. Launch a container instance of the newly-built image
+4. Launch a container instance of the newly-built image. Also launches the action_server node automatically on container startup
    
 ```docker run -it --net=host ot2 ```
-
-5. Run the action_server node
-```ros2 run demo action_client```
-
-
-NEXT: Launch the action_server node automatically on container startup
