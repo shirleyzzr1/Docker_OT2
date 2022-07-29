@@ -20,9 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'demo_robot = demo.demo_robot:main',
-            'action_server = demo.action_server:main',
-            'action_client = demo.action_client:main'
+            'action_server = demo.action_server:main'
         ],
     },
 )
