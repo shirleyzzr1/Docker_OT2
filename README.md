@@ -6,7 +6,7 @@
 
 ## Configuation Instructions/Setup Notes
 
-- The host computer master/scheduler terminal must be on the same network, verified by successfull pinging.
+- The host computer master/scheduler terminal must be on the same network, verified by successfully pinging.
 
 
 ## Runtime Instructions
@@ -21,8 +21,10 @@
 
 3. Build the docker image (might be required to prepend docker commands with sudo)
    
+
 ```docker build -t ot2 .```
 
 4. Launch a container instance of the newly-built image. Also launches the action_server node automatically on container startup
    
+
 ```docker run -it --net=host ot2 ```
