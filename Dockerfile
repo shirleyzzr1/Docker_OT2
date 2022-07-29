@@ -1,8 +1,5 @@
 FROM kwelbeck/base-ros2-with-empty-overlay:latest
 
-# Sourcing underlay in each terminal
-RUN echo "source $ROS_ROOT/setup.bash" >> ~/.bashrc
-
 # Creating, downloading resource directories, ros packages and sourcing as overlay
 RUN mkdir -p /root/config/temp
 
