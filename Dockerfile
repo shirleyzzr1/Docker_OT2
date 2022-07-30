@@ -1,9 +1,10 @@
 FROM kwelbeck/base-ros2-with-empty-overlay:latest
 
-# Creating, downloading resource directories, ros packages and sourcing as overlay
+# Creating directory for decoded yamls
 RUN mkdir -p /root/config/temp
 
-#downloading ot2_driver package
+# Downloading ot2_driver, installing dependencies and changing ownership from root
+# Could alterntively change permissions instead
 WORKDIR /root
 RUN git clone -b dev-kyle https://github.com/kjwelbeck3/ot2_driver.git \
     && pip3 install -r ot2_driver/requirements.txt \
@@ -11,18 +12,16 @@ RUN git clone -b dev-kyle https://github.com/kjwelbeck3/ot2_driver.git \
     && chown user:user ot2_driver \
     && mkdir -p /root/
 
-# creating, downloading resource directories ros packages and sourcing an overlay
+# Downloading ros packages and Creating an overlay
+RUN mkdir -p $ROS_WS/src
+WORKDIR $ROS_WS/src
+COPY ros-packages .
+RUN vcs import < repos
 WORKDIR $ROS_WS
-COPY demo src/demo/
-RUN git clone -b demo https://github.com/kjwelbeck3/demo_interfaces.git \
-    && mv demo_interfaces src
-
 SHELL ["/bin/bash", "-c"]
 RUN source $ROS_ROOT/setup.bash && colcon build --symlink-install && source $ROS_WS/install/setup.bash
 
-# Prepping entrypoint, running ros node
+# On image run, source overlay and launch node
 COPY ros_entrypoint.sh /
-RUN chown user:user /ros_entrypoint.sh
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
-
 CMD ["ros2", "run", "demo", "action_server"]
