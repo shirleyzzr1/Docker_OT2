@@ -1,4 +1,4 @@
-FROM kwelbeck/base-ros2-with-empty-overlay:arm64
+FROM kwelbeck/base-ros2-with-empty-overlay:latest
 
 # Creating directory for decoded yamls
 RUN mkdir -p /root/config/temp
