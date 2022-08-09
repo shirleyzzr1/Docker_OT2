@@ -1,6 +1,7 @@
 import yaml
 from argparse import ArgumentParser
 
+
 file_path = "~/config/temp/rc_document.yaml"
 
 def parse_arguments():
