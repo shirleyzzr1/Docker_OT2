@@ -52,7 +52,7 @@ class DemoActionServer(Node):
 
         """
         
-        python_file_path = "/root/ot2_driver/ot2_driver/ot2_driver_ssh.py"
+        python_file_path = "/root/ot2_driver/ot2_driver/ot2_driver_http.py"
         rc_document_path = "/root/config/temp/rc_document.yaml"
         pc_document_path = "/root/config/temp/pc_document.yaml"
 
