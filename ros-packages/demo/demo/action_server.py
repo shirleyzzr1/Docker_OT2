@@ -61,6 +61,7 @@ class DemoActionServer(Node):
             self.get_logger().info(".. robot config path: {}".format(job.rc_path))
         if job.pc_path != None:
             self.get_logger().info(".. protocol config path: {}".format(job.pc_path))
+        self.get_logger().info("simulate: {}".format(simulate))
 
 
         path = '/root/config/temp'
