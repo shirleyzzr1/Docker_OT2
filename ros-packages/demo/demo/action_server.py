@@ -3,7 +3,6 @@ import time
 import subprocess
 import yaml
 import os
-import enum
 
 import rclpy
 from rclpy.action import ActionServer
@@ -12,13 +11,7 @@ from rclpy.node import Node
 from demo_interfaces.action import OT2Job
 from std_msgs.msg import String
 
-# Using enum class create enumerations
-class States(enum.Enum):
-   BUSY = 1
-   IDLE = 2
-   ERROR = 3
 
-state = States.IDLE
 
 class DemoActionServer(Node):
     """
@@ -34,18 +27,9 @@ class DemoActionServer(Node):
             'OT2', 
             self.action_callback
         )
-        self.publisher_ = self.create_publisher(String, 'status', 10)
-        timer_period = 0.5  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.get_logger().info("OT2 Action Server running!")
         self.get_logger().info("Awaiting robot and protocol configuration from action client ...")
-        
-    def timer_callback(self):
-        msg = String()
-        msg.data = self.get_namespace()[1:] +" " + state.name
-        self.publisher_.publish(msg)
-        # self.get_logger().info('Publishing: "%s"' % msg.data)
 
     def action_callback(self, goal_handle):
         """
