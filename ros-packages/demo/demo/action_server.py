@@ -36,7 +36,7 @@ class DemoActionServer(Node):
 
         """
         
-        python_file_path = "/root/ot2_driver/ot2_driver/ot2_driver_ssh.py"
+        python_file_path = "/root/ot2_driver/ot2_driver/ot2_driver_http.py"
         rc_document_path = "/root/config/temp/rc_document.yaml"
         pc_document_path = "/root/config/temp/pc_document.yaml"
 
@@ -61,6 +61,7 @@ class DemoActionServer(Node):
             self.get_logger().info(".. robot config path: {}".format(job.rc_path))
         if job.pc_path != None:
             self.get_logger().info(".. protocol config path: {}".format(job.pc_path))
+        self.get_logger().info("simulate: {}".format(simulate))
 
 
         path = '/root/config/temp'

@@ -1,13 +1,21 @@
 FROM kwelbeck/base-ros2-with-empty-overlay:latest
 
+# # Install system packages : python
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     python3.9 \
+#     && rm -rf /var/lib/apt/lists/*
+
+
 # Creating directory for decoded yamls
 RUN mkdir -p /root/config/temp
 
 # Downloading ot2_driver, installing dependencies and changing ownership from root
 # Could alterntively change permissions instead
 WORKDIR /root
-RUN git clone -b dev-kyle https://github.com/kjwelbeck3/ot2_driver.git \
+RUN git clone -b dev-kyle https://github.com/KPHippe/ot2_driver.git \
     && pip3 install -r ot2_driver/requirements.txt \
+    && pip3 install -e ot2_driver \
+    && pip install numpy --upgrade \
     && useradd user \
     && chown user:user ot2_driver \
     && mkdir -p /root/
