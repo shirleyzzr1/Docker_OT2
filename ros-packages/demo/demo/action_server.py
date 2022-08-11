@@ -9,6 +9,8 @@ from rclpy.action import ActionServer
 from rclpy.node import Node
 
 from demo_interfaces.action import OT2Job
+from demo_interfaces.msg import EmergencyAlert
+
 from std_msgs.msg import String
 
 
@@ -27,6 +29,10 @@ class DemoActionServer(Node):
             'OT2', 
             self.action_callback
         )
+
+        self.name = self.get_namespace()[1:]
+        self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
+
 
         self.get_logger().info("OT2 Action Server running!")
         self.get_logger().info("Awaiting robot and protocol configuration from action client ...")
@@ -113,6 +119,10 @@ class DemoActionServer(Node):
         result.success = success
 
         return result
+
+    def emergency_callback(self,msg):
+        if msg.message!="":
+            self.get_logger().info(self.name + " action received an emergency alert: " + msg.message)
 
 def main(args=None):
     """
