@@ -30,14 +30,9 @@ class DemoActionServer(Node):
             self.action_callback
         )
 
-<<<<<<< HEAD
-        # self.emergency_sub
-        # self.pipette_sub
-=======
         self.name = self.get_namespace()[1:]
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
 
->>>>>>> 5799dbb4b54471ea305facbcb1d20b84b3798b14
 
         self.get_logger().info("OT2 Action Server running!")
         self.get_logger().info("Awaiting robot and protocol configuration from action client ...")
