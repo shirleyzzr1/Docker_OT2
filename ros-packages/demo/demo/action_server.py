@@ -28,6 +28,9 @@ class DemoActionServer(Node):
             self.action_callback
         )
 
+        # self.emergency_sub
+        # self.pipette_sub
+
         self.get_logger().info("OT2 Action Server running!")
         self.get_logger().info("Awaiting robot and protocol configuration from action client ...")
 
