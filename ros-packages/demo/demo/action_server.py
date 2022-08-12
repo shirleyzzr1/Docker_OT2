@@ -32,6 +32,7 @@ class DemoActionServer(Node):
 
         self.name = self.get_namespace()[1:]
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
+        self.emergency_flag = False
 
 
         self.get_logger().info("OT2 Action Server running!")
@@ -93,8 +94,8 @@ class DemoActionServer(Node):
         cmd = ["python3", python_file_path, "-rc", rc_path, "-pc", pc_path, "-v"]
         if simulate:
             cmd.append("-s")
-
-        completed_process = subprocess.run(cmd, capture_output=True, text=True)  #check=True
+        if not self.emergency_flag:
+            completed_process = subprocess.run(cmd, capture_output=True, text=True)  #check=True
 
         ## Setting the goal state to acknowledge the action client
         goal_handle.succeed()
@@ -121,7 +122,9 @@ class DemoActionServer(Node):
         return result
 
     def emergency_callback(self,msg):
+        self.emergency_flag = False
         if msg.message!="":
+            self.emergency_flag = True
             self.get_logger().info(self.name + " action received an emergency alert: " + msg.message)
 
 def main(args=None):
