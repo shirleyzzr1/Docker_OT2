@@ -1,6 +1,7 @@
 from distutils.log import info
 import time
 import subprocess
+from unittest import result
 import yaml
 import os
 
@@ -29,6 +30,7 @@ class DemoActionServer(Node):
         Create client to report emergencies
         Publish Heartbeat on a timer
         Create action server awaiting OT2 goals/jobs, and reporting back from OT2
+        TODO Reject goals on emergency or accept and not execute
         """
         super().__init__('demo_action_server')
         self._action_server = ActionServer(
@@ -129,7 +131,8 @@ class DemoActionServer(Node):
         #     completed_process = subprocess.run(cmd, capture_output=True, text=True)  #check=True
 
         ## NEW OT2 DRIVER MODULE
-        
+        ## TODO might have to not make these variables instance variables; event of new goal will override
+        ##      Alternatively could make this node only take one action at a time via thread locks 
             
         self.get_logger().error("1")
         self.protocol_file_path, self.resource_file_path = self.ot2.compile_protocol(pc_document_path)
@@ -140,66 +143,71 @@ class DemoActionServer(Node):
         self.get_logger().warn("run_id: {}".format(self.run_id))
         self.get_logger().error("4")
         
-        execute_resp = None
-        if validation["simulate"]:
-            
-            # TODO subprocess call to simulate
-            # execute_resp = "" ## TODO stdout from subprocess
-            
-            # ## TODO handle error and success
-            # if execute_resp.returncode == 0:
-            #     success = True
-            #     goal_handle.succeed()
+        if not self.emergency_flag:
+            execute_resp = None
+            if validation["simulate"]:
+                
+                # TODO subprocess call to simulate
+                # execute_resp = "" ## TODO stdout from subprocess
+                
+                # ## TODO handle error and success
+                # if execute_resp.returncode == 0:
+                #     success = True
+                #     goal_handle.succeed()
 
-            # result_msg.error_msg = execute_resp.stdout  ## TODO
-            # return result_msg 
-            pass 
+                # result_msg.error_msg = execute_resp.stdout  ## TODO
+                # return result_msg 
+                pass 
 
-        else: 
-            execute_resp = self.ot2.execute(self.run)
-            self.get_logger().error("5")
-            self.get_logger().warn("execute_resp: {}".format(execute_resp))
-            self.get_logger().error("6")
+            else: 
+                
+                execute_resp = self.ot2.execute(self.run)
+                self.get_logger().error("5")
+                self.get_logger().warn("execute_resp: {}".format(execute_resp))
+                self.get_logger().error("6")
 
-        ## Setting the goal state to acknowledge to the ActionClient TODO remove
-        ## Update Heartbeat State, Log response from OT2/OT2_driver
-        ## TO-DO: Verify/Validate response from OT2/OT2_driver
-        if execute_resp:
+            ## Setting the goal state to acknowledge to the ActionClient TODO remove
+            ## Update Heartbeat State, Log response from OT2/OT2_driver
+            ## TO-DO: Verify/Validate response from OT2/OT2_driver
+            if execute_resp: ##TODO require something more specific from resp
 
-            self.get_logger().info(execute_resp)
-            self._heartbeat_state = Heartbeat.BUSY
-            self.get_logger().info("IDLE --> BUSY") #placeholder
-            
-        else:
+                self.get_logger().info(execute_resp)
+                self._heartbeat_state = Heartbeat.BUSY
+                self.get_logger().info("IDLE --> BUSY") #placeholder
+                
+            else:  ##TODO require something more specific from resp
 
-            self._heartbeat_state = Heartbeat.ERROR
-            self.get_logger().info("IDLE --> ERROR") #placeholder
-            # Must alert the error type and propagate to ActionClient
-
-
-        ## Getting Feedback through to ActionClient
-
-        ## TODO: adapt to the specifics of how OT2 responds to the status request
-        ##      - what to do when running and when done and when something is reported
-
-        run_status = self.ot2.get_run(self.run_id)
-        while run_status == "in-progress": ## TODO
-            feedback_msg.progress_msg = run_status
-            goal_handle.publish_feedback(feedback_msg)
-            run_status = self.ot2.get_run(self.run_id)
-            ## need to exit when done
-
-            if run_status == "error": ## TODO
                 self._heartbeat_state = Heartbeat.ERROR
-                result_msg.error_msg = "" ## TODO Error from the OT2
+                self.get_logger().info("IDLE --> ERROR") #placeholder
+                # Must alert the error type and propagate to ActionClient
 
-            elif run_status == "finished": ## TODO
-                self._heartbeat_state = Heartbeat.FINISHED  # TODO but according to terminate set in the goal request
-                self.get_logger().info("BUSY --> {}".format(validation["termination_state"]))
-                success = True
 
-            time.sleep(feedback_sleep_time)
+            ## Getting Feedback through to ActionClient
 
+            ## TODO: adapt to the specifics of how OT2 responds to the status request
+            ##      - what to do when running and when done and when something is reported
+
+            run_status = self.ot2.get_run(self.run_id)
+            while run_status == "in-progress": ## TODO
+                feedback_msg.progress_msg = run_status
+                goal_handle.publish_feedback(feedback_msg)
+                run_status = self.ot2.get_run(self.run_id)
+                ## need to exit when done
+
+                if run_status == "error": ## TODO
+                    self._heartbeat_state = Heartbeat.ERROR
+                    result_msg.error_msg = "" ## TODO Error from the OT2
+
+                elif run_status == "finished": ## TODO
+                    self._heartbeat_state = Heartbeat.FINISHED  # TODO but according to terminate set in the goal request
+                    self.get_logger().info("BUSY --> {}".format(validation["termination_state"]))
+                    success = True
+
+                time.sleep(feedback_sleep_time)
+
+        else:
+            result_msg.error_msg = "[ERROR] Cannot execute protocols during an Emergency"
+            self.get_logger().error(result_msg.error_msg)
             
         ## Formulating and returning response to the ActionClient
         if success:
