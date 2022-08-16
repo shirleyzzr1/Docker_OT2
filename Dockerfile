@@ -40,5 +40,4 @@ RUN source $ROS_ROOT/setup.bash && colcon build --symlink-install --packages-sel
 # On image run, source overlay and launch node
 COPY ros_entrypoint.sh /
 ENTRYPOINT [ "/ros_entrypoint.sh" ]
-#CMD ["ros2","run","demo","action_server", "--ros-args", "-r"," __ns:=/$NAME"]
-CMD ros2 run demo action_server --ros-args -r __ns:=/$NAME
+CMD ros2 launch demo demo.launch.py
