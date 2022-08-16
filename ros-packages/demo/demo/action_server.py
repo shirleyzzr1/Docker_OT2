@@ -12,6 +12,7 @@ from rclpy.node import Node
 from demo_interfaces.action import OT2Job
 from demo_interfaces.msg import EmergencyAlert
 from demo_interfaces.msg import Heartbeat
+from demo_interfaces.srv import RaiseEmergency
 
 
 from std_msgs.msg import String
@@ -33,6 +34,8 @@ class DemoActionServer(Node):
         TODO Reject goals on emergency or accept and not execute
         """
         super().__init__('demo_action_server')
+        
+        ## Action server to be namespaced with action server 
         self._action_server = ActionServer(
             self, OT2Job, 
             'OT2', 
@@ -40,20 +43,20 @@ class DemoActionServer(Node):
         )
 
         ### TODO - Namespaces are taken care off automatically: No need to concatenate strings
+        ### TODO - Need to remove all references
         self.name = self.get_namespace()[1:]
 
-        ## Set up Emergency tracking and client
-        self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
+        ## Set up Emergency tracking and service proxy (client)
+        self.emergency_sub = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
         self.emergency_flag = False  # TODO maybe should default to True
-        
-        ## TODO: Rasie emergency proxy/client
+        # self.emergency_client = self.create_client(RaiseEmergency, "/raise_emergency")
         
         ## Set up Heartbeat publisher/publishing on a timer
         heartbeat_timer_period = 2 #seconds TODO
-        self.heartbeatTimer = self.create_timer(heartbeat_timer_period, self.heartbeat_timer_callback)
-        self.heartbeatPublisher = self.create_publisher(Heartbeat, 'heartbeat', 10)
-        self.heartbeat = Heartbeat()
-        self.heartbeat.header.src = self.get_fully_qualified_name()
+        self.heartbeat_timer = self.create_timer(heartbeat_timer_period, self.heartbeat_timer_callback)
+        self.heartbeat_publisher = self.create_publisher(Heartbeat, '{}/heartbeat'.format(self.get_name()), 10)
+        self.heartbeat_msg = Heartbeat()
+        self.heartbeat_msg.header.src = self.get_fully_qualified_name()
         self._heartbeat_state = Heartbeat.IDLE  # TODO maybe should default to BUSY or ERROR
 
         ## Alert that the Action Server has been created
@@ -66,16 +69,23 @@ class DemoActionServer(Node):
         Update private emergency status 
         """
 
-        if msg.isEmergency:
+        if msg.isEmergency and not self.emergency_flag:
             self.emergency_flag = True
             self.get_logger().warn("{} action received an emergency alert: {}".format(self.get_fully_qualified_name(),msg.message)) 
+            ## TODO: Should include the source of error in the warn
+
+        if not msg.isEmergency and self.emergency_flag:
+            self.emergency_flag = False
+            self.get_logger().info("Emergency alert(s) cleared.")
 
     def heartbeat_timer_callback(self):
         """
         Update the heartbeat's header timestamp and heartbeat state
+        and publish
         """
-        self.heartbeat.state = self._heartbeat_state
-        self.heartbeat.header.stamp = self.get_clock().now().to_msg
+        self.heartbeat_msg.state = self._heartbeat_state
+        self.heartbeat_msg.header.stamp = self.get_clock().now().to_msg()
+        self.heartbeat_publisher.publish(self.heartbeat_msg)
 
     def action_goal_callback(self, requested_goal):
         """
@@ -102,6 +112,7 @@ class DemoActionServer(Node):
 
         ## Setup Feedback and Result msgs
         result_msg = OT2Job.Result()
+        result_msg.header.src = self.get_fully_qualified_name()
         feedback_msg = OT2Job.Feedback()
 
         ## Validating recvd goal request
@@ -190,6 +201,7 @@ class DemoActionServer(Node):
             run_status = self.ot2.get_run(self.run_id)
             while run_status == "in-progress": ## TODO
                 feedback_msg.progress_msg = run_status
+                feedback_msg.header.stamp = self.get_clock().now().to_msg()
                 goal_handle.publish_feedback(feedback_msg)
                 run_status = self.ot2.get_run(self.run_id)
                 ## need to exit when done
@@ -272,3 +284,18 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
+## Plan to Handle Pauses
+## onEmercency callback: 
+    ## if heartbeat_status is busy, pause and set status to Emergency
+    ## if idle, error do nothing
+## offEmergecny callback
+    ## if heartbeat_status is emergency, recover to busy and  resume
+
+## Heartbeat consideration:
+## Intent behind action server termination state should be offloaded to action client
+    ## Action server should always resets to IDLE
+    ## Action client terminates on FINISHED or IDLE depending on if needed again 
+## Action server hearbeat needed for
+    ## client checking aliveness before sending goal
+    ## pause and resume states
