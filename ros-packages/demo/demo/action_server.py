@@ -2,6 +2,7 @@ from distutils.log import info
 import time
 import subprocess
 from unittest import result
+# from unittest import result
 import yaml
 import os
 
@@ -156,19 +157,25 @@ class DemoActionServer(Node):
         
         if not self.emergency_flag:
             execute_resp = None
-            if validation["simulate"]:
+            if validation["simulate"] or eval(os.getenv('simulate')):
+                self.get_logger().warn("Running protocol in SIMULATION mode...")
                 
-                # TODO subprocess call to simulate
-                # execute_resp = "" ## TODO stdout from subprocess
+                ## TODO subprocess call to simulate                
+                cmd = "opentrons_simulate {}".format(self.protocol_file_path)
+                execute_resp = subprocess.run(cmd.split(), capture_output=True, text=True)
                 
-                # ## TODO handle error and success
-                # if execute_resp.returncode == 0:
-                #     success = True
-                #     goal_handle.succeed()
-
-                # result_msg.error_msg = execute_resp.stdout  ## TODO
-                # return result_msg 
-                pass 
+                ## TODO handle error and success
+                if execute_resp.returncode == 0:
+                    success = True
+                    result_msg.error_msg = execute_resp.stdout
+                    goal_handle.succeed()
+                    self._heartbeat_state = Heartbeat.IDLE
+                else: 
+                    result_msg.error_msg = execute_resp.stderr 
+                    self._heartbeat_state = Heartbeat.ERROR
+                
+                return result_msg 
+                 
 
             else: 
                 
