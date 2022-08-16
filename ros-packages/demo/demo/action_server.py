@@ -157,7 +157,7 @@ class DemoActionServer(Node):
         
         if not self.emergency_flag:
             execute_resp = None
-            if validation["simulate"] or eval(os.getenv('simulate')):
+            if validation["simulate"] or (os.getenv('simulate').lower() == 'true'):
                 self.get_logger().warn("Running protocol in SIMULATION mode...")
                 
                 ## TODO subprocess call to simulate                
