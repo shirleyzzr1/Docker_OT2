@@ -19,6 +19,7 @@ from demo_interfaces.srv import RaiseEmergency
 from std_msgs.msg import String
 
 from ot2_driver.ot2_driver_http import OT2_Driver, OT2_Config
+from opentrons.simulate import simulate, format_runlog
 
 
 
@@ -59,6 +60,7 @@ class DemoActionServer(Node):
         self.heartbeat_msg = Heartbeat()
         self.heartbeat_msg.header.src = self.get_fully_qualified_name()
         self._heartbeat_state = Heartbeat.IDLE  # TODO maybe should default to BUSY or ERROR
+        self._heartbeat_info = ""
 
         ## Alert that the Action Server has been created
         self.get_logger().info("OT2 ActionServer {} running!".format(self.get_fully_qualified_name()))
@@ -85,6 +87,7 @@ class DemoActionServer(Node):
         and publish
         """
         self.heartbeat_msg.state = self._heartbeat_state
+        self.heartbeat_msg.message = self._heartbeat_info
         self.heartbeat_msg.header.stamp = self.get_clock().now().to_msg()
         self.heartbeat_publisher.publish(self.heartbeat_msg)
 
@@ -134,69 +137,58 @@ class DemoActionServer(Node):
         self.ot2 = OT2_Driver(OT2_Config(ip=self.robot_ip))
             
         ## Compile, transfer then execute OT2 protocol
-
-        ## OLD SUBPROCESSES VERSION
-        # cmd = ["python3", python_file_path, "-rc", rc_path, "-pc", pc_path, "-v"]
-        # if simulate:
-        #     cmd.append("-s")
-        # if not self.emergency_flag:
-        #     completed_process = subprocess.run(cmd, capture_output=True, text=True)  #check=True
-
-        ## NEW OT2 DRIVER MODULE
         ## TODO might have to not make these variables instance variables; event of new goal will override
         ##      Alternatively could make this node only take one action at a time via thread locks 
             
-        self.get_logger().error("1")
         self.protocol_file_path, self.resource_file_path = self.ot2.compile_protocol(pc_document_path)
-        self.get_logger().error("2 {}, {}".format(self.protocol_file_path, self.resource_file_path))
-
         self.protocol_id, self.run_id = self.ot2.transfer(self.protocol_file_path)
-        self.get_logger().error("3")
-        self.get_logger().warn("run_id: {}".format(self.run_id))
-        self.get_logger().error("4")
         
         if not self.emergency_flag:
             execute_resp = None
             if validation["simulate"] or (os.getenv('simulate').lower() == 'true'):
                 self.get_logger().warn("Running protocol in SIMULATION mode...")
                 
-                ## TODO subprocess call to simulate                
-                cmd = "opentrons_simulate {}".format(self.protocol_file_path)
-                execute_resp = subprocess.run(cmd.split(), capture_output=True, text=True)
-                
-                ## TODO handle error and success
-                if execute_resp.returncode == 0:
+                ## TODO subprocess call to simulate  
+                ## TODO handle error and success              
+
+                # cmd = "opentrons_simulate {}".format(self.protocol_file_path)
+                # execute_resp = subprocess.run(cmd.split(), capture_output=True, text=True)
+
+                try:
+                    execute_resp, _bundle = simulate(open(self.protocol_file_path))
                     success = True
-                    result_msg.error_msg = execute_resp.stdout
+                    result_msg.error_msg = format_runlog(execute_resp.stdout)
+                    self._heartbeat_info = ""
                     goal_handle.succeed()
                     self._heartbeat_state = Heartbeat.IDLE
-                else: 
-                    result_msg.error_msg = execute_resp.stderr 
+
+                except Exception as e:
+                    result_msg.error_msg = "[SIMULATION ERROR] " + str(e) 
                     self._heartbeat_state = Heartbeat.ERROR
+                    self._heartbeat_info = result_msg.error_msg
                 
                 return result_msg 
                  
-
             else: 
+                execute_resp = yaml.load(self.ot2.execute(self.run_id))
                 
-                execute_resp = self.ot2.execute(self.run)
-                self.get_logger().error("5")
-                self.get_logger().warn("execute_resp: {}".format(execute_resp))
-                self.get_logger().error("6")
+
 
             ## Setting the goal state to acknowledge to the ActionClient TODO remove
             ## Update Heartbeat State, Log response from OT2/OT2_driver
             ## TO-DO: Verify/Validate response from OT2/OT2_driver
-            if execute_resp: ##TODO require something more specific from resp
+            if execute_resp["data"]["actionType"] == "play": ##TODO require something more specific from resp
 
-                self.get_logger().info(execute_resp)
+                self._heartbeat_info = "Run ({}) created at {}".format(execute_resp["data"]["id"], execute_resp["data"]["createdAt"])
+                self.get_logger().info(self._heartbeat_info)
                 self._heartbeat_state = Heartbeat.BUSY
                 self.get_logger().info("IDLE --> BUSY") #placeholder
                 
             else:  ##TODO require something more specific from resp
-
+                self._heartbeat_info = "[OT2 Error] {}: {}".format(execute_resp["errors"][0]["id"], execute_resp["errors"][0]["detail"])
                 self._heartbeat_state = Heartbeat.ERROR
                 self.get_logger().info("IDLE --> ERROR") #placeholder
+                self.get_logger().error(self._heartbeat_info)
                 # Must alert the error type and propagate to ActionClient
 
 
@@ -205,24 +197,34 @@ class DemoActionServer(Node):
             ## TODO: adapt to the specifics of how OT2 responds to the status request
             ##      - what to do when running and when done and when something is reported
 
-            run_status = self.ot2.get_run(self.run_id)
-            while run_status == "in-progress": ## TODO
-                feedback_msg.progress_msg = run_status
+            run_status = yaml.load(self.ot2.get_run(self.run_id))
+            while run_status["data"]["status"] == "running": ## TODO should also include the paused 
+                feedback_msg.progress_msg = "Running: Started at {}".format(run_status["data"]["startedAt"])
                 feedback_msg.header.stamp = self.get_clock().now().to_msg()
                 goal_handle.publish_feedback(feedback_msg)
-                run_status = self.ot2.get_run(self.run_id)
-                ## need to exit when done
 
-                if run_status == "error": ## TODO
-                    self._heartbeat_state = Heartbeat.ERROR
-                    result_msg.error_msg = "" ## TODO Error from the OT2
+                ## need to exit when done                
+                run_status = yaml.load(self.ot2.get_run(self.run_id))
 
-                elif run_status == "finished": ## TODO
+                if run_status["data"]["status"] == "paused": ## 
+                    self._heartbeat_state = Heartbeat.ERROR ## TODO Should have a paused state
+                    self._heartbeat_info = "OT2 paused at {}".format(run_status["data"]["actions"][-1]["createdAt"])
+                    result_msg.error_msg = self._heartbeat_info ## TODO Error from the OT2
+                    feedback_msg.header.stamp = self.get_clock().now().to_msg()
+                    feedback_msg.progress_msg = self._heartbeat_info
+                    self.get_logger().info(self._heartbeat_info)
+
+                elif run_status["data"]["status"] == "succeeded": ## TODO
                     self._heartbeat_state = Heartbeat.FINISHED  # TODO but according to terminate set in the goal request
-                    self.get_logger().info("BUSY --> {}".format(validation["termination_state"]))
+                    self._heartbeat_info = "OT2 completed job {} at {}".format(run_status["data"]["id"], run_status["data"]["completedAt"])
+                    # self.get_logger().info("BUSY --> {}".format(validation["termination_state"])) # TODO
+                    self.get_logger().info("BUSY --> IDLE")
+                    result_msg.error_msg = self._heartbeat_info
                     success = True
 
                 time.sleep(feedback_sleep_time)
+                
+
 
         else:
             result_msg.error_msg = "[ERROR] Cannot execute protocols during an Emergency"
