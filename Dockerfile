@@ -12,7 +12,7 @@ RUN mkdir -p /root/config/temp
 # Downloading ot2_driver, installing dependencies and changing ownership from root
 # Could alterntively change permissions instead
 WORKDIR /root
-RUN git clone -b dev-kyle https://github.com/KPHippe/ot2_driver.git \
+RUN git clone -b kojo https://github.com/KPHippe/ot2_driver.git \
     && pip3 install -r ot2_driver/requirements.txt \
     && pip3 install -e ot2_driver \
     && pip install numpy --upgrade \

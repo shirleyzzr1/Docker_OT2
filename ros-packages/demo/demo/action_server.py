@@ -7,7 +7,8 @@ import yaml
 import os
 
 import rclpy
-from rclpy.action import ActionServer, GoalRepsonse
+from rclpy.action import ActionServer, GoalResponse
+from rclpy.action.server import GoalStatus
 from rclpy.node import Node
 
 from demo_interfaces.action import OT2Job
@@ -41,12 +42,15 @@ class DemoActionServer(Node):
         self._action_server = ActionServer(
             self, OT2Job, 
             'OT2', 
-            execute_callback=self.action_execution_callback
+            execute_callback=self.action_execute_callback,
+            goal_callback=self.action_goal_callback,
+            handle_accepted_callback=self.goal_accepted_callback
         )
 
         ### TODO - Namespaces are taken care off automatically: No need to concatenate strings
         ### TODO - Need to remove all references
         self.name = self.get_namespace()[1:]
+        
 
         ## Set up Emergency tracking and service proxy (client)
         self.emergency_sub = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
@@ -67,17 +71,20 @@ class DemoActionServer(Node):
         self.get_logger().info("Awaiting robot and protocol configuration from OT2 ActionClient ...")
 
 
+    def get_fully_qualified_name(self) -> str:
+        return "{}/{}".format(self.get_namespace(), self.get_name())
+
     def emergency_callback(self,msg):
         """
         Update private emergency status 
         """
 
-        if msg.isEmergency and not self.emergency_flag:
+        if msg.is_emergency and not self.emergency_flag:
             self.emergency_flag = True
             self.get_logger().warn("{} action received an emergency alert: {}".format(self.get_fully_qualified_name(),msg.message)) 
             ## TODO: Should include the source of error in the warn
 
-        if not msg.isEmergency and self.emergency_flag:
+        if not msg.is_emergency and self.emergency_flag:
             self.emergency_flag = False
             self.get_logger().info("Emergency alert(s) cleared.")
 
@@ -95,13 +102,15 @@ class DemoActionServer(Node):
         """
         TODO: Log new; check for emrgency state then accept(GoalResponse.ACCEPT) or reject (GoalResponse.)
         """
-        pass
+        # requested_goal.execute()
+        return GoalResponse.ACCEPT
 
     def goal_accepted_callback(self, goal_handle):
         """
         TODO: Unpack and Save yaml 
         """
-        pass
+        # goal_handle.status = GoalStatus.STATUS_EXECUTING
+        goal_handle.execute()
 
     def action_execute_callback(self, goal_handle):
         """
@@ -116,8 +125,8 @@ class DemoActionServer(Node):
 
         ## Setup Feedback and Result msgs
         result_msg = OT2Job.Result()
-        result_msg.header.src = self.get_fully_qualified_name()
         feedback_msg = OT2Job.Feedback()
+        feedback_msg.progress.header.src = self.get_fully_qualified_name()
 
         ## Validating recvd goal request
         valid, validation = self.validate_goal_request(goal_handle)
@@ -133,15 +142,17 @@ class DemoActionServer(Node):
             self.get_logger().info(validation)
             result_msg.error_msg = validation
 
+        goal_handle.succeed()
+
         ## Create ot2_driver object 
-        self.ot2 = OT2_Driver(OT2_Config(ip=self.robot_ip))
+        self.ot2 = OT2_Driver(OT2_Config(ip=validation["robot_ip"]))
             
         ## Compile, transfer then execute OT2 protocol
         ## TODO might have to not make these variables instance variables; event of new goal will override
         ##      Alternatively could make this node only take one action at a time via thread locks 
             
         self.protocol_file_path, self.resource_file_path = self.ot2.compile_protocol(pc_document_path)
-        self.protocol_id, self.run_id = self.ot2.transfer(self.protocol_file_path)
+        
         
         if not self.emergency_flag:
             execute_resp = None
@@ -157,7 +168,9 @@ class DemoActionServer(Node):
                 try:
                     execute_resp, _bundle = simulate(open(self.protocol_file_path))
                     success = True
-                    result_msg.error_msg = format_runlog(execute_resp.stdout)
+                    result_msg.error_msg = format_runlog(execute_resp)
+                    self.get_logger().info("Success!")
+                    self.get_logger().info(result_msg.error_msg)
                     self._heartbeat_info = ""
                     goal_handle.succeed()
                     self._heartbeat_state = Heartbeat.IDLE
@@ -166,11 +179,14 @@ class DemoActionServer(Node):
                     result_msg.error_msg = "[SIMULATION ERROR] " + str(e) 
                     self._heartbeat_state = Heartbeat.ERROR
                     self._heartbeat_info = result_msg.error_msg
+                    goal_handle.aborted()
                 
+                result_msg.success = success
                 return result_msg 
                  
-            else: 
-                execute_resp = yaml.load(self.ot2.execute(self.run_id))
+             
+            self.protocol_id, self.run_id = self.ot2.transfer(self.protocol_file_path)
+            execute_resp = self.ot2.execute(self.run_id)
                 
 
 
@@ -197,31 +213,35 @@ class DemoActionServer(Node):
             ## TODO: adapt to the specifics of how OT2 responds to the status request
             ##      - what to do when running and when done and when something is reported
 
-            run_status = yaml.load(self.ot2.get_run(self.run_id))
+            run_status = self.ot2.get_run(self.run_id)
             while run_status["data"]["status"] == "running": ## TODO should also include the paused 
-                feedback_msg.progress_msg = "Running: Started at {}".format(run_status["data"]["startedAt"])
-                feedback_msg.header.stamp = self.get_clock().now().to_msg()
-                goal_handle.publish_feedback(feedback_msg)
+                feedback_msg.progress.progress_msg = "Running: Started at {}".format(run_status["data"]["startedAt"])
+                feedback_msg.progress.header.stamp = self.get_clock().now().to_msg()
+                ## TODO: Elapsed time in feedback
 
                 ## need to exit when done                
-                run_status = yaml.load(self.ot2.get_run(self.run_id))
+                run_status = self.ot2.get_run(self.run_id)
 
                 if run_status["data"]["status"] == "paused": ## 
-                    self._heartbeat_state = Heartbeat.ERROR ## TODO Should have a paused state
+                    self._heartbeat_state = Heartbeat.EMERGENCY ## TODO Should have a paused state
                     self._heartbeat_info = "OT2 paused at {}".format(run_status["data"]["actions"][-1]["createdAt"])
                     result_msg.error_msg = self._heartbeat_info ## TODO Error from the OT2
-                    feedback_msg.header.stamp = self.get_clock().now().to_msg()
-                    feedback_msg.progress_msg = self._heartbeat_info
+                    feedback_msg.progress.header.stamp = self.get_clock().now().to_msg()
+                    feedback_msg.progress.progress_msg = self._heartbeat_info
                     self.get_logger().info(self._heartbeat_info)
 
                 elif run_status["data"]["status"] == "succeeded": ## TODO
                     self._heartbeat_state = Heartbeat.FINISHED  # TODO but according to terminate set in the goal request
+                    self.get_logger().info("Success!")
                     self._heartbeat_info = "OT2 completed job {} at {}".format(run_status["data"]["id"], run_status["data"]["completedAt"])
                     # self.get_logger().info("BUSY --> {}".format(validation["termination_state"])) # TODO
                     self.get_logger().info("BUSY --> IDLE")
                     result_msg.error_msg = self._heartbeat_info
                     success = True
-
+                    feedback_msg.progress.header.stamp = self.get_clock().now().to_msg()
+                    feedback_msg.progress.progress_msg = self._heartbeat_info
+                
+                goal_handle.publish_feedback(feedback_msg)
                 time.sleep(feedback_sleep_time)
                 
 
@@ -231,8 +251,8 @@ class DemoActionServer(Node):
             self.get_logger().error(result_msg.error_msg)
             
         ## Formulating and returning response to the ActionClient
-        if success:
-            goal_handle.succeed() 
+        # if success:
+        goal_handle.succeed() 
         result_msg.success = success
         return result_msg
 
@@ -253,8 +273,8 @@ class DemoActionServer(Node):
         ## [To-Do?]: Validate IP address signature by regex
 
         if job.robot_ip:
-            self.get_logger().info("OT2JobActionClient:{} provided a robot IP address: {}".format(job.header.src, job.ip_address))
-            robot_ip = job.ip_address
+            self.get_logger().info("OT2JobActionClient:{} provided a robot IP address: {}".format(job.header.src, job.robot_ip))
+            robot_ip = job.robot_ip
         else:
             response = "OT2JobActionClient:{} did not provide the required robot_ip".format(job.header.src)
             self.get_logger().error(response) 
