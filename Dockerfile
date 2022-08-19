@@ -29,13 +29,13 @@ WORKDIR $ROS_WS
 SHELL ["/bin/bash", "-c"]
 RUN source $ROS_ROOT/setup.bash && colcon build --symlink-install && source $ROS_WS/install/setup.bash
 
-#Download image_tools
-WORKDIR $ROS_WS/src
-RUN git clone -b galactic https://github.com/ros2/demos.git \
-    && apt-get update && apt-get -y install libopencv-dev
-WORKDIR $ROS_WS
-SHELL ["/bin/bash", "-c"]
-RUN source $ROS_ROOT/setup.bash && colcon build --symlink-install --packages-select image_tools && source $ROS_WS/install/setup.bash
+# #Download image_tools
+# WORKDIR $ROS_WS/src
+# RUN git clone -b galactic https://github.com/ros2/demos.git \
+#     && apt-get update && apt-get -y install libopencv-dev
+# WORKDIR $ROS_WS
+# SHELL ["/bin/bash", "-c"]
+# RUN source $ROS_ROOT/setup.bash && colcon build --symlink-install --packages-select image_tools && source $ROS_WS/install/setup.bash
 
 # On image run, source overlay and launch node
 COPY ros_entrypoint.sh /
