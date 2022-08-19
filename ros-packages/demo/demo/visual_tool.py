@@ -53,7 +53,7 @@ class VisualTool(Node):
 
     def common_callback(self,msg):
         # self.get_logger().info('I heard: "%s"'%msg.data)
-        machine = msg.header.src
+        machine = msg.header.src.split("/")[1]
         state = States(msg.state).name
         self.machine_states[machine]=state
         # self.get_logger().info(machine+" is now "+state)
