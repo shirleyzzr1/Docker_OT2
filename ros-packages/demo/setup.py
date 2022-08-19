@@ -23,7 +23,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'action_server = demo.action_server:main'
+            'action_server = demo.action_server:main',
+            'error_handler = demo.error_handler:main',
+            'visual_tool = demo.visual_tool:main'
         ],
     },
 )

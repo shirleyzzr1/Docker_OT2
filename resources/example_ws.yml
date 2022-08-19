@@ -1,0 +1,21 @@
+modules:
+  - name: ot2_1
+    type: OT2
+    id: some_unique_id
+  - name: pf400
+    type: pf400
+    id: other_unique_id
+  - name: ot2_2
+    type: OT2
+    id: unique_id_3
+    
+actions:
+  - name: step 1
+    module: ot2_1
+    command:
+      instruction: ot2_protocoll
+      args:
+        pc_path: /root/protocol_config.yaml
+        rc_path: /root/robot_config.yaml
+        vars: Optional
+    comment: this is an optional string

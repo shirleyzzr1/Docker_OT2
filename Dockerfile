@@ -20,6 +20,10 @@ RUN git clone -b kojo https://github.com/KPHippe/ot2_driver.git \
     && chown user:user ot2_driver \
     && mkdir -p /root/
 
+# Copying config files
+WORKDIR /root
+COPY resources/ .
+
 # Downloading ros packages and Creating an overlay
 RUN mkdir -p $ROS_WS/src
 WORKDIR $ROS_WS/src
