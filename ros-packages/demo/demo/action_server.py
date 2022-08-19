@@ -52,8 +52,8 @@ class DemoActionServer(Node):
         protocol_config = job.protocol_config
 
         ## Comment out to test hard-coded job_path 
-        pc_path = job.pc_path
-        rc_path = job.rc_path
+        # pc_path = job.pc_path
+        # rc_path = job.rc_path
         simulate = job.simulate
 
         ## Uncomment to test out hard_coded job_path
@@ -63,11 +63,12 @@ class DemoActionServer(Node):
         
         
         ## Log/Print the recieved Job
-        self.get_logger().info("Recieved New Job Request...")
-        if job.rc_path != None:
-            self.get_logger().info(".. robot config path: {}".format(job.rc_path))
-        if job.pc_path != None:
-            self.get_logger().info(".. protocol config path: {}".format(job.pc_path))
+        # self.get_logger().info("Recieved New Job Request...")
+        # if job.rc_path != None:
+        #     self.get_logger().info(".. robot config path: {}".format(job.rc_path))
+        # if job.pc_path != None:
+        #     self.get_logger().info(".. protocol config path: {}".format(job.pc_path))
+
         self.get_logger().info("simulate: {}".format(simulate))
 
 
@@ -77,17 +78,17 @@ class DemoActionServer(Node):
 
         ## Checking if path or raw configs were sent in the job message
         ## Current job message definition allows either option
-        if job.rc_path=='None':
-            rc_path = rc_document_path
-            self.get_logger().info("Writing robot config to {} ...".format(rc_document_path))
-            with open(rc_document_path, 'w',encoding = "utf-8") as rc_file:
-                rc_file.write(job.robot_config)
+        # if job.rc_path=='None':
+        rc_path = rc_document_path
+        self.get_logger().info("Writing robot config to {} ...".format(rc_document_path))
+        with open(rc_document_path, 'w',encoding = "utf-8") as rc_file:
+            rc_file.write(job.robot_config)
 
-        if job.pc_path=='None':
-            pc_path = pc_document_path
-            self.get_logger().info("Writing protocol config to {} ...".format(pc_document_path))
-            with open(pc_document_path,'w',encoding = "utf-8") as pc_file:
-                pc_file.write(job.protocol_config)
+        # if job.pc_path=='None':
+        pc_path = pc_document_path
+        self.get_logger().info("Writing protocol config to {} ...".format(pc_document_path))
+        with open(pc_document_path,'w',encoding = "utf-8") as pc_file:
+            pc_file.write(job.protocol_config)
         
         ## Calling the script that compiles, transfers and execute OT2 instructions
         success = False
@@ -95,6 +96,8 @@ class DemoActionServer(Node):
         if simulate:
             cmd.append("-s")
         if not self.emergency_flag:
+            self.get_logger().info("start running OT2 in real time")
+
             completed_process = subprocess.run(cmd, capture_output=True, text=True)  #check=True
 
         ## Setting the goal state to acknowledge the action client
@@ -123,7 +126,7 @@ class DemoActionServer(Node):
 
     def emergency_callback(self,msg):
         self.emergency_flag = False
-        if msg.message!="":
+        if msg.is_emergency==True:
             self.emergency_flag = True
             self.get_logger().info(self.name + " action received an emergency alert: " + msg.message)
 
