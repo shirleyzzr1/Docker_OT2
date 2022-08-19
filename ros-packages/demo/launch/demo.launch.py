@@ -18,6 +18,12 @@ def generate_launch_description():
             namespace = os.getenv('robot_name'),
             executable = 'action_server',
             name = 'action_server'
+        ),
+        Node(
+            package='demo',
+            namespace='',
+            executable='error_handler',
+            name='error_handler'
         )
     ]
     return LaunchDescription(Nodelist)

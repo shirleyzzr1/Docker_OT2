@@ -76,12 +76,15 @@ class DemoActionServer(Node):
         """
         Update private emergency status 
         """
-
+        # self.get_logger().error(msg)
         if msg.is_emergency and not self.emergency_flag:
             self.emergency_flag = True
             self._heartbeat_state = Heartbeat.EMERGENCY
             self.get_logger().info("---> EMERGENCY")
             self.get_logger().warn("{} action received an emergency alert: {}".format(self.get_fully_qualified_name(),msg.message)) 
+            # if self._heartbeat_state == Heartbeat.BUSY:
+            #     self.ot2.pause(self.run_id)
+            #     self.get_logger().warn("Pausing OT2...")
             ## TODO: Should include the source of error in the warn
 
         if not msg.is_emergency and self.emergency_flag:
@@ -89,6 +92,7 @@ class DemoActionServer(Node):
             self._heartbeat_state = Heartbeat.IDLE
             self.get_logger().info("EMERGENCY --->")
             self.get_logger().info("Emergency alert(s) cleared.")
+            ## TODO Include a resume call if state is on emergency
 
     def heartbeat_timer_callback(self):
         """
@@ -290,6 +294,7 @@ class DemoActionServer(Node):
                 ## need to exit when done                
                 run_status = self.ot2.get_run(self.run_id)
 
+                # i
 
                 while run_status["data"]["status"] == "paused": ## 
                     if self._heartbeat_state == Heartbeat.BUSY:
