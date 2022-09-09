@@ -17,42 +17,52 @@ from opentrons.simulate import simulate, format_runlog
 
 class DemoActionServer(Node):
     """
-    A ros node to interface directly with the OT2, serving as the central 
+    A ROS2 node to interface directly with the OT2, serving as the central 
     process of the robot terminal connected to the OT2.
-    This node provides a ros action server, through which action clients can 
+    This node provides an action server, through which action clients can 
     send goal requests to instruct the OT2 to execute it core capabilities 
     of picking pipettes, aspirate and dispensing substrates and dropping off 
     pipettes for disposal.     
 
     ActionServer:
-     - ~/OT2 [demo_interfaces/action/OT2Job] -- for instructing OT2 run defined by protocol configurations 
+     - ~/OT2 [demo_interfaces/action/OT2Job] 
+            -- for instructing OT2 runs defined by protocol configuration 
+                files
 
     Publishers:
-     - ~/action_server/heartbeat [demo_interfaces/msg/Heartbeat] -- to alert subscribers to OT2(+node) state
+     - ~/action_server/heartbeat [demo_interfaces/msg/Heartbeat] 
+            -- to alert subscribers to OT2(+node) state
 
 
     Subscribers:
-     - /emergency [demo_interfaces/msg/EmergencyAlert]  -- for global emergency tracking
+     - /emergency [demo_interfaces/msg/EmergencyAlert]  
+            -- for global emergency tracking
 
 
     Service Clients:
-     - /raise_emergency [demo_interfaces/srv/RaiseEmergency] -- As part of global emergency system to alert system to OT2 emergencies [currently deactivated]
-     - /clear_emergency [demo_interfaces/srv/RaiseEmergency] -- As part of global emergency system to alert system to resolved OT2 emergency [currently deactivated]
-     
-
-
-
+     - /raise_emergency [demo_interfaces/srv/RaiseEmergency] 
+            -- As part of global emergency system to alert system to OT2 
+                emergencies [currently deactivated]
+     - /clear_emergency [demo_interfaces/srv/RaiseEmergency] 
+            -- As part of global emergency system to alert system to resolved 
+                OT2 emergency [currently deactivated]
     """
+
+    
     def __init__(self):
         """
         Subscribe and respond to Emergency Alerts system
+            Respond by pausing/unpausing current OT2 run 
+            Respond by not triggering OT2 Run if emergency event
+            Respond by triggering OT2 run when emergency event is resolved
         Create service client to report emergencies to Emergency Alerts system
         Publish Heartbeat on a timer
-        Create action server awaiting OT2 goals/jobs, and reporting back from OT2
-        Accept goals during emergency event but do not execute until no remaining event
+        Create action server awaiting OT2 goals/jobs, and reporting back from 
+        OT2
         """
 
-        super().__init__('demo_action_server')
+        # super().__init__('demo_action_server')
+        super().__init__('action_server')
         
         ## Action server to be namespaced with action server 
         self._action_server = ActionServer(
@@ -66,8 +76,9 @@ class DemoActionServer(Node):
         
 
         ## Set up global Emergency tracking and service proxy (client)
-        ## Initialized as True for safety; waiting for clearance
-        ## No use case here for raising emergency so client is commented out
+        ## Initialized as True for safety; waiting for clearance from 
+        ## emergency system
+        ## No use case here for raising/clearing emergency so client is commented out
         self.emergency_sub = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
         self.emergency_flag = True      
         # self.emergency_flagging_client = self.create_client(RaiseEmergency, "/raise_emergency") 
