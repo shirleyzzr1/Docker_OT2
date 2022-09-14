@@ -232,7 +232,7 @@ class DemoActionServer(Node):
         self.feedback_msg = OT2Job.Feedback()
         self.feedback_msg.progress.header.src = self.get_fully_qualified_name()
         
-        if self.validation["simulate"] or (os.getenv('simulate', 'false') and os.getenv('simulate').lower() == 'true'):
+        if self.validation["simulate"] or (os.getenv('simulate') and os.getenv('simulate').lower() == 'true'):
             self.get_logger().warn("Running protocol in SIMULATION mode...")
             self.i = 0
             self.simulate_timer = self.create_timer(1, self.simulate_timer_callback)
@@ -397,6 +397,9 @@ class DemoActionServer(Node):
         result_msg = OT2Job.Result()
         result_msg.success = True
         result_msg.error_msg = self._heartbeat_info
+
+        self._heartbeat_state = Heartbeat.IDLE
+        self._heartbeat_info = ""
         
         return result_msg
 
@@ -417,6 +420,9 @@ class DemoActionServer(Node):
         self.get_logger().info(result.error_msg)
         response_message = "Simulation Finished"
         self.get_logger().info(response_message)
+
+        self._heartbeat_state = Heartbeat.IDLE
+        self._heartbeat_info = ""
         
         return result
 

@@ -20,12 +20,5 @@ def generate_launch_description():
             name = 'action_server',
             emulate_tty = True
         ),
-        Node(
-            package='demo',
-            namespace='',
-            executable='error_handler',
-            name='error_handler',
-            emulate_tty = True
-        )
     ]
     return LaunchDescription(Nodelist)
