@@ -11,4 +11,10 @@ if [[ -z $robot_name ]]; then
     exit 1
 fi
 
+## Verify robot_ip environment variable is set; Exit otherwise
+if [[ -z $robot_ip ]]; then
+    echo "[ERROR] robot_ip environment variable is not set. Must be set to construct the needed robot config"
+    exit 1
+fi
+
 exec "$@"
